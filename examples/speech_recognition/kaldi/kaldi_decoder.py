@@ -209,7 +209,7 @@ class KaldiDecoder(object):
             results = []
             for s in seq:
                 _, o, w = get_linear_symbol_sequence(s)
-                words = list(self.output_symbols[z] for z in o)
+                words = [self.output_symbols[z] for z in o]
                 results.append(
                     {
                         "tokens": words,
@@ -234,11 +234,10 @@ class KaldiDecoder(object):
         if padding is None:
             padding = [None] * len(emissions)
 
-        ret = list(
+        return list(
             map(
                 lambda e, p: self.executor.submit(self.decode_one, e, p),
                 emissions,
                 padding,
             )
         )
-        return ret

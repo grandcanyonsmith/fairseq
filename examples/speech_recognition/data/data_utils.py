@@ -24,8 +24,7 @@ def apply_mv_norm(features):
     if features.size(0) < 2:
         return features
     mean, invstddev = calc_mean_invstddev(features)
-    res = (features - mean) * invstddev
-    return res
+    return (features - mean) * invstddev
 
 
 def lengths_to_encoder_padding_mask(lengths, batch_first=False):
@@ -58,10 +57,11 @@ def lengths_to_encoder_padding_mask(lengths, batch_first=False):
     ).expand(
         -1, max_lengths
     )
-    if not batch_first:
-        return encoder_padding_mask.t(), max_lengths
-    else:
-        return encoder_padding_mask, max_lengths
+    return (
+        (encoder_padding_mask, max_lengths)
+        if batch_first
+        else (encoder_padding_mask.t(), max_lengths)
+    )
 
 
 def encoder_padding_mask_to_lengths(

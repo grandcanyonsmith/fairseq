@@ -137,7 +137,7 @@ class W2lKenLMDecoder(W2lDecoder):
             self.trie = Trie(self.vocab_size, self.silence)
 
             start_state = self.lm.start(False)
-            for i, (word, spellings) in enumerate(self.lexicon.items()):
+            for word, spellings in self.lexicon.items():
                 word_idx = self.word_dict.get_index(word)
                 _, score = self.lm.score(start_state, word_idx)
                 for spelling in spellings:
@@ -150,7 +150,7 @@ class W2lKenLMDecoder(W2lDecoder):
 
             self.decoder_opts = LexiconDecoderOptions(
                 beam_size=args.beam,
-                beam_size_token=int(getattr(args, "beam_size_token", len(tgt_dict))),
+                beam_size_token=getattr(args, "beam_size_token", len(tgt_dict)),
                 beam_threshold=args.beam_threshold,
                 lm_weight=args.lm_weight,
                 word_score=args.word_score,
@@ -159,6 +159,7 @@ class W2lKenLMDecoder(W2lDecoder):
                 log_add=False,
                 criterion_type=self.criterion_type,
             )
+
 
             if self.asg_transitions is None:
                 N = 768
@@ -184,13 +185,14 @@ class W2lKenLMDecoder(W2lDecoder):
             self.lm = KenLM(args.kenlm_model, self.word_dict)
             self.decoder_opts = LexiconFreeDecoderOptions(
                 beam_size=args.beam,
-                beam_size_token=int(getattr(args, "beam_size_token", len(tgt_dict))),
+                beam_size_token=getattr(args, "beam_size_token", len(tgt_dict)),
                 beam_threshold=args.beam_threshold,
                 lm_weight=args.lm_weight,
                 sil_score=args.sil_weight,
                 log_add=False,
                 criterion_type=self.criterion_type,
             )
+
             self.decoder = LexiconFreeDecoder(
                 self.decoder_opts, self.lm, self.silence, self.blank, []
             )
@@ -419,7 +421,7 @@ class W2lFairseqLMDecoder(W2lDecoder):
 
             self.decoder_opts = LexiconDecoderOptions(
                 beam_size=args.beam,
-                beam_size_token=int(getattr(args, "beam_size_token", len(tgt_dict))),
+                beam_size_token=getattr(args, "beam_size_token", len(tgt_dict)),
                 beam_threshold=args.beam_threshold,
                 lm_weight=args.lm_weight,
                 word_score=args.word_score,
@@ -428,6 +430,7 @@ class W2lFairseqLMDecoder(W2lDecoder):
                 log_add=False,
                 criterion_type=self.criterion_type,
             )
+
 
             self.decoder = LexiconDecoder(
                 self.decoder_opts,
@@ -448,13 +451,14 @@ class W2lFairseqLMDecoder(W2lDecoder):
             self.lm = KenLM(args.kenlm_model, self.word_dict)
             self.decoder_opts = LexiconFreeDecoderOptions(
                 beam_size=args.beam,
-                beam_size_token=int(getattr(args, "beam_size_token", len(tgt_dict))),
+                beam_size_token=getattr(args, "beam_size_token", len(tgt_dict)),
                 beam_threshold=args.beam_threshold,
                 lm_weight=args.lm_weight,
                 sil_score=args.sil_weight,
                 log_add=False,
                 criterion_type=self.criterion_type,
             )
+
             self.decoder = LexiconFreeDecoder(
                 self.decoder_opts, self.lm, self.silence, self.blank, []
             )
@@ -464,10 +468,7 @@ class W2lFairseqLMDecoder(W2lDecoder):
         hypos = []
 
         def idx_to_word(idx):
-            if self.unit_lm:
-                return self.idx_to_wrd[idx]
-            else:
-                return self.word_dict[idx]
+            return self.idx_to_wrd[idx] if self.unit_lm else self.word_dict[idx]
 
         def make_hypo(result):
             hypo = {"tokens": self.get_tokens(result.tokens), "score": result.score}

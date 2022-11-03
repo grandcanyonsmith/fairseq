@@ -24,19 +24,22 @@ MILLISECONDS_TO_SECONDS = 0.001
 def process_sample(aud_path, lable, utt_id, sp, tgt_dict):
     import torchaudio
 
-    input = {}
-    output = {}
     si, ei = torchaudio.info(aud_path)
-    input["length_ms"] = int(
-        si.length / si.channels / si.rate / MILLISECONDS_TO_SECONDS
-    )
-    input["path"] = aud_path
+    input = {
+        "length_ms": int(
+            si.length / si.channels / si.rate / MILLISECONDS_TO_SECONDS
+        ),
+        "path": aud_path,
+    }
 
     token = " ".join(sp.EncodeAsPieces(lable))
     ids = tgt_dict.encode_line(token, append_eos=False)
-    output["text"] = lable
-    output["token"] = token
-    output["tokenid"] = ", ".join(map(str, [t.tolist() for t in ids]))
+    output = {
+        "text": lable,
+        "token": token,
+        "tokenid": ", ".join(map(str, [t.tolist() for t in ids])),
+    }
+
     return {utt_id: {"input": input, "output": output}}
 
 
@@ -85,7 +88,7 @@ def main():
     for line in args.labels:
         (utt_id, label) = line.split(" ", 1)
         labels[utt_id] = label
-    if len(labels) == 0:
+    if not labels:
         raise Exception("No labels found in ", args.labels_path)
 
     Sample = namedtuple("Sample", "aud_path utt_id")
@@ -117,7 +120,7 @@ def main():
             except Exception as exc:
                 print("generated an exception: ", exc)
             else:
-                utts.update(data)
+                utts |= data
     json.dump({"utts": utts}, args.output, indent=4)
 
 
