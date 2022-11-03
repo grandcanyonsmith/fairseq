@@ -105,7 +105,7 @@ def create_lexicon(
             with open(in_units_file, "r") as in_f, open(lexicon_file, "w") as out_f:
                 for line in in_f:
                     symb = line.split()[0]
-                    if symb != "<eps>" and symb != "<ctc_blank>" and symb != "<SIL>":
+                    if symb not in ["<eps>", "<ctc_blank>", "<SIL>"]:
                         print(symb, symb, file=out_f)
 
         lex_disambig_path = (
@@ -173,7 +173,7 @@ def create_L(
                 for line in f:
                     items = line.rstrip().split()
                     if items[0] == "#0":
-                        out_path = str(file) + "_disamig"
+                        out_path = f"{str(file)}_disamig"
                         with open(out_path, "w") as out_f:
                             print(items[1], file=out_f)
                             return out_path
@@ -297,11 +297,13 @@ def create_H(
     silence_symbol: Optional[str],
 ) -> (Path, Path, Path):
     h_graph = (
-        fst_dir / f"H.{in_labels}{'_' + silence_symbol if silence_symbol else ''}.fst"
+        fst_dir
+        / f"H.{in_labels}{f'_{silence_symbol}' if silence_symbol else ''}.fst"
     )
+
     h_out_units_file = fst_dir / f"kaldi_dict.h_out.{in_labels}.txt"
-    disambig_in_units_file_int = Path(str(h_graph) + "isym_disambig.int")
-    disambig_out_units_file_int = Path(str(disambig_out_units_file) + ".int")
+    disambig_in_units_file_int = Path(f"{str(h_graph)}isym_disambig.int")
+    disambig_out_units_file_int = Path(f"{str(disambig_out_units_file)}.int")
     if (
         not h_graph.exists()
         or not h_out_units_file.exists()
@@ -314,29 +316,25 @@ def create_H(
         osymbols = []
 
         with open(disambig_out_units_file, "r") as f, open(
-            disambig_out_units_file_int, "w"
-        ) as out_f:
+                    disambig_out_units_file_int, "w"
+                ) as out_f:
             for line in f:
                 symb, id = line.rstrip().split()
                 if line.startswith("#"):
                     num_disambig += 1
                     print(id, file=out_f)
                 else:
-                    if len(osymbols) == 0:
+                    if not osymbols:
                         assert symb == eps_sym, symb
                     osymbols.append((symb, id))
 
-        i_idx = 0
         isymbols = [(eps_sym, 0)]
 
         imap = {}
 
-        for i, s in enumerate(vocab.symbols):
-            i_idx += 1
+        for i_idx, s in enumerate(vocab.symbols, start=1):
             isymbols.append((s, i_idx))
             imap[s] = i_idx
-
-        fst_str = []
 
         node_idx = 0
         root_node = node_idx
@@ -345,44 +343,48 @@ def create_H(
         if silence_symbol is not None:
             special_symbols.append(silence_symbol)
 
-        for ss in special_symbols:
-            fst_str.append("{} {} {} {}".format(root_node, root_node, ss, eps_sym))
-
+        fst_str = [f"{root_node} {root_node} {ss} {eps_sym}" for ss in special_symbols]
         for symbol, _ in osymbols:
             if symbol == eps_sym or symbol.startswith("#"):
                 continue
 
             node_idx += 1
-            # 1. from root to emitting state
-            fst_str.append("{} {} {} {}".format(root_node, node_idx, symbol, symbol))
-            # 2. from emitting state back to root
-            fst_str.append("{} {} {} {}".format(node_idx, root_node, eps_sym, eps_sym))
+            fst_str.extend(
+                (
+                    f"{root_node} {node_idx} {symbol} {symbol}",
+                    f"{node_idx} {root_node} {eps_sym} {eps_sym}",
+                )
+            )
+
             # 3. from emitting state to optional blank state
             pre_node = node_idx
             node_idx += 1
-            for ss in special_symbols:
-                fst_str.append("{} {} {} {}".format(pre_node, node_idx, ss, eps_sym))
-            # 4. from blank state back to root
-            fst_str.append("{} {} {} {}".format(node_idx, root_node, eps_sym, eps_sym))
+            fst_str.extend(
+                f"{pre_node} {node_idx} {ss} {eps_sym}"
+                for ss in special_symbols
+            )
 
-        fst_str.append("{}".format(root_node))
+            # 4. from blank state back to root
+            fst_str.append(f"{node_idx} {root_node} {eps_sym} {eps_sym}")
+
+        fst_str.append(f"{root_node}")
 
         fst_str = "\n".join(fst_str)
         h_str = str(h_graph)
-        isym_file = h_str + ".isym"
+        isym_file = f"{h_str}.isym"
 
         with open(isym_file, "w") as f:
             for sym, id in isymbols:
-                f.write("{} {}\n".format(sym, id))
+                f.write(f"{sym} {id}\n")
 
         with open(h_out_units_file, "w") as f:
             for sym, id in osymbols:
-                f.write("{} {}\n".format(sym, id))
+                f.write(f"{sym} {id}\n")
 
         with open(disambig_in_units_file_int, "w") as f:
             disam_sym_id = len(isymbols)
             for _ in range(num_disambig):
-                f.write("{}\n".format(disam_sym_id))
+                f.write(f"{disam_sym_id}\n")
                 disam_sym_id += 1
 
         fstcompile = kaldi_root / "tools/openfst-1.6.7/bin/fstcompile"
@@ -659,14 +661,7 @@ def initalize_kaldi(cfg: KaldiInitializerConfig) -> Path:
     hlga_graph = create_HLGa(
         kaldi_root, fst_dir, unique_label, h_graph, lg_graph, disambig_in_units_file_int
     )
-    hlg_graph = create_HLG(kaldi_root, fst_dir, unique_label, hlga_graph)
-
-    # for debugging
-    # hla_graph = create_HLa(kaldi_root, fst_dir, unique_label, h_graph, lexicon_graph, disambig_in_units_file_int)
-    # hl_graph = create_HLG(kaldi_root, fst_dir, unique_label, hla_graph, prefix="HL_looped")
-    # create_HLG(kaldi_root, fst_dir, "phnc", h_graph, prefix="H_looped")
-
-    return hlg_graph
+    return create_HLG(kaldi_root, fst_dir, unique_label, hlga_graph)
 
 
 @hydra.main(config_path=config_path, config_name="kaldi_initializer")

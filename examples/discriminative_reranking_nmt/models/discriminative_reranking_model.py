@@ -58,13 +58,11 @@ class BaseRanker(nn.Module):
 
     def get_segment_labels(self, src_tokens):
         segment_boundary = (src_tokens == self.separator_token).long()
-        segment_labels = (
+        return (
             segment_boundary.cumsum(dim=1)
             - segment_boundary
             - (src_tokens == self.padding_idx).long()
         )
-
-        return segment_labels
 
     def get_positions(self, src_tokens, segment_labels):
         segment_positions = (
@@ -173,15 +171,14 @@ class BertRanker(BaseRanker):
                 dropout=args.dropout,
                 attention_dropout=args.attention_dropout,
                 activation_dropout=args.activation_dropout,
-                max_seq_len=task.max_positions()
-                if task.max_positions()
-                else args.tokens_per_sample,
+                max_seq_len=task.max_positions() or args.tokens_per_sample,
                 num_segments=2,
                 offset_positions_by_padding=False,
                 encoder_normalize_before=args.encoder_normalize_before,
                 apply_bert_init=args.apply_bert_init,
                 activation_fn=args.activation_fn,
             )
+
 
             classifier_embed_dim = args.embed_dim
             ffn_embedding_dim = args.ffn_embed_dim

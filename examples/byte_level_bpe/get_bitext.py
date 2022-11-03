@@ -89,12 +89,13 @@ def _get_bpe(in_path: str, model_prefix: str, vocab_size: int):
     arguments = [
         f"--input={in_path}",
         f"--model_prefix={model_prefix}",
-        f"--model_type=bpe",
+        "--model_type=bpe",
         f"--vocab_size={vocab_size}",
         "--character_coverage=1.0",
         "--normalization_rule_name=identity",
         f"--num_threads={cpu_count()}",
     ]
+
     sp.SentencePieceTrainer.Train(" ".join(arguments))
 
 
@@ -172,10 +173,11 @@ def preprocess_iwslt17(
         for lang in [src, tgt]:
             for split in SPLITS:
                 _apply_bpe(
-                    bpe_model_prefix + ".model",
+                    f"{bpe_model_prefix}.model",
                     op.join(root, f"{split}.moses.{lang}"),
                     op.join(root, f"{split}.moses.bpe{bpe_size}.{lang}"),
                 )
+
     # tokenize with bytes vocabulary
     if need_bytes:
         for lang in [src, tgt]:
@@ -204,7 +206,7 @@ def preprocess_iwslt17(
         for lang in [src, tgt]:
             for split in SPLITS:
                 _apply_bbpe(
-                    bbpe_model_prefix + ".model",
+                    f"{bbpe_model_prefix}.model",
                     op.join(root, f"{split}.moses.{lang}"),
                     op.join(root, f"{split}.moses.bbpe{bbpe_size}.{lang}"),
                 )

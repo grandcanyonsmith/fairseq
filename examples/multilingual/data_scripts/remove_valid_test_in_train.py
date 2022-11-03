@@ -86,10 +86,16 @@ def count_train_in_other_set(mess_up_train):
 
 def train_size_if_remove_in_otherset(data_sizes, mess_up_train):
     counts_in_other = count_train_in_other_set(mess_up_train)
-    remain_sizes = []
-    for direction, count in counts_in_other.items():
-        remain_sizes.append((direction, data_sizes[direction] - count, data_sizes[direction], count, 100 * count / data_sizes[direction] ))
-    return remain_sizes
+    return [
+        (
+            direction,
+            data_sizes[direction] - count,
+            data_sizes[direction],
+            count,
+            100 * count / data_sizes[direction],
+        )
+        for direction, count in counts_in_other.items()
+    ]
 
 
 def remove_messed_up_sentences(raw_data, direction, mess_up_train, mess_up_train_pairs, corrected_langs):
@@ -101,7 +107,7 @@ def remove_messed_up_sentences(raw_data, direction, mess_up_train, mess_up_train
     print(f'working on {direction}: ', src, tgt)
     if not os.path.exists(tgt) or not os.path.exists(src) :
         return
-    
+
     corrected_tgt = f"{to_folder}/{split}.{direction}.{tgt_lang}"
     corrected_src = f"{to_folder}/{split}.{direction}.{src_lang}"
     line_num = 0
@@ -231,7 +237,7 @@ if __name__ == "__main__":
     print('working on directions: ', directions)
 
     ##########
-    
+
 
 
     all_test_data, test_data = get_all_test_data(raw_data, directions, 'test')
